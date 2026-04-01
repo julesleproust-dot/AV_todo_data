@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avenear — Todo liste ordonnée</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4ef; min-height: 100vh; padding: 24px 16px; color: #1a1a18; }
+.container { max-width: 780px; margin: 0 auto; }
+h1 { font-size: 20px; font-weight: 600; color: #1a1a18; margin-bottom: 4px; }
+.subtitle { font-size: 13px; color: #6b6b65; margin-bottom: 20px; }
+
+/* Global progress */
+.gbar { display:flex; align-items:center; gap:10px; padding:12px 16px; background:#fff; border-radius:10px; margin-bottom:16px; border:1px solid #e5e4df; }
+.gbar-label { font-size:12px; font-weight:500; color:#1a1a18; }
+.gbar-track { flex:1; height:7px; background:#e5e4df; border-radius:4px; overflow:hidden; }
+.gbar-fill  { height:100%; border-radius:4px; background:#1D9E75; transition:width .3s; }
+.gbar-pct   { font-size:11px; color:#6b6b65; min-width:110px; text-align:right; }
+
+/* Group */
+.group { margin-bottom:8px; border-radius:10px; overflow:hidden; border:1px solid #e5e4df; background:#fff; }
+.group-header { display:flex; align-items:center; gap:8px; padding:10px 14px; cursor:pointer; user-select:none; }
+.group-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.group-name { font-size:12px; font-weight:600; flex:1; }
+.group-prog { font-size:10px; min-width:36px; text-align:right; }
+.group-chev { font-size:9px; color:#9c9a92; transition:transform .2s; }
+.group-chev.open { transform:rotate(90deg); }
+.group-body { display:none; border-top:1px solid #e5e4df; }
+.group-body.open { display:block; }
+
+/* Task */
+.trow { display:flex; align-items:flex-start; gap:10px; padding:10px 14px; border-bottom:1px solid #f0efe9; transition:background .15s; }
+.trow:last-child { border-bottom:none; }
+.trow:hover { background:#fafaf7; }
+.trow.done-row { background:#fafaf7; opacity:0.6; }
+.tnum { width:24px; height:24px; border-radius:50%; font-size:10px; font-weight:600; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+.tcb  { margin-top:3px; width:15px; height:15px; accent-color:#1D9E75; flex-shrink:0; cursor:pointer; }
+.tbody { flex:1; }
+.ttitle { font-size:12px; font-weight:500; color:#1a1a18; line-height:1.4; }
+.ttitle.done { text-decoration:line-through; color:#9c9a92; }
+.tdesc { font-size:11px; color:#6b6b65; line-height:1.5; margin-top:3px; }
+.tmeta { display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; align-items:center; }
+.tag { font-size:9px; font-weight:600; padding:1px 6px; border-radius:3px; }
+.t-tool   { background:#E6F1FB; color:#0C447C; }
+.t-rgpd   { background:#FCEBEB; color:#791F1F; }
+.t-ia     { background:#EEEDFE; color:#3C3489; }
+.t-data   { background:#E1F5EE; color:#085041; }
+.t-out    { background:#FAEEDA; color:#633806; }
+.t-python { background:#dbeafe; color:#1e40af; }
+.blocker  { font-size:9px; color:#A32D2D; background:#FCEBEB; padding:1px 6px; border-radius:3px; font-weight:600; border:1px solid #F09595; }
+
+/* Phase colors */
+.g0 .group-header { background:#FEF2F2; } .g0 .group-dot { background:#E24B4A; } .g0 .group-name { color:#791F1F; } .g0 .group-prog { color:#A32D2D; }
+.g1 .group-header { background:#EEEDFE; } .g1 .group-dot { background:#534AB7; } .g1 .group-name { color:#3C3489; } .g1 .group-prog { color:#534AB7; }
+.g2 .group-header { background:#E1F5EE; } .g2 .group-dot { background:#0F6E56; } .g2 .group-name { color:#085041; } .g2 .group-prog { color:#0F6E56; }
+.g3 .group-header { background:#FAEEDA; } .g3 .group-dot { background:#854F0B; } .g3 .group-name { color:#633806; } .g3 .group-prog { color:#854F0B; }
+.g4 .group-header { background:#FAECE7; } .g4 .group-dot { background:#993C1D; } .g4 .group-name { color:#712B13; } .g4 .group-prog { color:#993C1D; }
+.g5 .group-header { background:#E6F1FB; } .g5 .group-dot { background:#185FA5; } .g5 .group-name { color:#0C447C; } .g5 .group-prog { color:#185FA5; }
+.g6 .group-header { background:#EAF3DE; } .g6 .group-dot { background:#3B6D11; } .g6 .group-name { color:#27500A; } .g6 .group-prog { color:#3B6D11; }
+
+.n0 { background:#F7C1C1; color:#501313; }
+.n1 { background:#CECBF6; color:#26215C; }
+.n2 { background:#9FE1CB; color:#04342C; }
+.n3 { background:#FAC775; color:#412402; }
+.n4 { background:#F5C4B3; color:#4A1B0C; }
+.n5 { background:#B5D4F4; color:#042C53; }
+.n6 { background:#C0DD97; color:#173404; }
+
+.footer { text-align:center; font-size:11px; color:#9c9a92; margin-top:20px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Avenear — Todo liste ordonnée</h1>
+  <p class="subtitle">65 tâches numérotées dans l'ordre d'exécution · Collecte → Nettoyage → Codage → Analyse → Visualisation → Livrables</p>
+
+  <div class="gbar">
+    <span class="gbar-label">Progression globale</span>
+    <div class="gbar-track"><div class="gbar-fill" id="gfill" style="width:0%"></div></div>
+    <span class="gbar-pct" id="gpct">0 / 65 tâches (0%)</span>
+  </div>
+
+  <div id="root"></div>
+  <div class="footer">Avenear · Données sauvegardées localement dans votre navigateur</div>
+</div>
+
+<script>
+const groups = [
+{id:'g0',cls:'g0',ncls:'n0',label:'Phase 0 — Cadre RGPD (à faire EN PREMIER, avant tout)',tasks:[
+  {n:1,title:'Rédiger le DPA type Avenear → École',desc:'Contrat de sous-traitance à signer avec chaque école avant toute collecte. Mentions : parties, finalité, catégories de données, durée, obligations de sécurité et suppression. Archiver dans Notion EU → RGPD/DPA.',tags:['rgpd'],blocker:true},
+  {n:2,title:'Rédiger la mention d\'information type (questionnaire)',desc:'Texte page 1 de chaque formulaire Tally. Contenu : finalité, durée 12 mois, aucune donnée nominative, droits d\'accès (email DPO), base légale consentement art. 6.1.a RGPD. Personnaliser par mission.',tags:['rgpd']},
+  {n:3,title:'Rédiger la mention d\'information type (entretien)',desc:'Texte lu avant chaque entretien + envoyé par email. Contenu : finalité, audio supprimé sous 30 jours, transcription anonymisée conservée 12 mois, lien de rétractation.',tags:['rgpd']},
+  {n:4,title:'Créer le registre des traitements Avenear (Notion EU)',desc:'Tableau Notion EU : 1 ligne par mission. Colonnes : école, type collecte, base légale, données collectées, durée conservation, outils, DPA signé, dates début/fin/suppression. Obligatoire légalement.',tags:['rgpd','tool']},
+  {n:5,title:'Rédiger la charte de confidentialité student-researchers',desc:'Document à signer avant chaque mission : interdiction divulgation, stockage uniquement sur espaces désignés, interdiction d\'enregistrer hors protocole, obligation de signaler tout incident.',tags:['rgpd']},
+  {n:6,title:'Signer le DPA Anthropic (Claude API)',desc:'console.anthropic.com → Settings → Privacy → DPA. Télécharger et signer. Inclut les Clauses Contractuelles Types EU. Archiver dans Notion EU.',tags:['rgpd','tool']},
+  {n:7,title:'Signer le DPA Mistral (codage quali)',desc:'console.mistral.ai → Settings → Legal → DPA. Signer en ligne. Mistral = serveurs Paris, intra-EU. Archiver dans Notion EU.',tags:['rgpd','tool']},
+  {n:8,title:'Créer le formulaire de demande de droits (accès/suppression)',desc:'Formulaire Tally simple permettant à un étudiant de demander accès ou suppression de ses données. Délai légal de réponse : 1 mois. Lien à inclure dans toutes les mentions.',tags:['rgpd','tool']},
+  {n:9,title:'Rédiger la procédure de notification de violation de données',desc:'Email type à envoyer à l\'école SANS DÉLAI en cas de fuite. L\'école notifie la CNIL dans les 72h si risque élevé. Stocker dans Notion EU → RGPD/Procédures.',tags:['rgpd']},
+]},
+{id:'g1',cls:'g1',ncls:'n1',label:'Phase 1A — Setup infrastructure (une fois pour toutes)',tasks:[
+  {n:10,title:'Créer le projet Supabase région Frankfurt (EU)',desc:'supabase.com → New project → Region : EU West (Frankfurt). Point critique RGPD. Conserver les clés API dans Notion EU → Clés API (jamais dans le code).',tags:['tool','rgpd'],blocker:true},
+  {n:11,title:'Créer les tables Supabase (reponses_enquetes + entretiens)',desc:'Table 1 reponses_enquetes : id, mission_id, etablissement, date_collecte, statut, promotion, scores (JSON), verbatims (JSON), created_at. Table 2 entretiens : id, mission_id, date, segment, transcription_anonymisee, verbatims_cles, codes_thematiques, sentiment_global, created_at.',tags:['tool','data']},
+  {n:12,title:'Configurer Row Level Security (RLS) dans Supabase',desc:'Activer RLS sur les deux tables. Policy : accès filtré par mission_id. Rôle "analyst" = lecture seule sur agrégats. Rôle "admin" = accès complet.',tags:['tool','rgpd']},
+  {n:13,title:'Paramétrer la purge automatique (pg_cron dans Supabase)',desc:'Activer l\'extension pg_cron. Job 1 : supprimer les audio flaggés après 30 jours. Job 2 : anonymiser les données brutes nominatives après 90 jours.',tags:['tool','rgpd']},
+  {n:14,title:'Créer les vues SQL pour Looker Studio',desc:'3 vues : vue_scores_par_dimension, vue_themes_quali, vue_nps. Ces vues pré-agrégées donnent accès aux données pour le dashboard sans exposer les tables brutes.',tags:['tool','data']},
+  {n:15,title:'Créer le compte Tally et configurer la confidentialité',desc:'tally.so → créer compte email pro Avenear. Dans Settings du formulaire : désactiver collecte IP, email, tracking session. Langue FR, fuseau Europe/Paris.',tags:['tool','rgpd']},
+  {n:16,title:'Créer le compte Make et le scénario Tally → Supabase',desc:'make.com → New scenario → Module 1 : Tally (Watch responses) → Module 2 : Supabase (Insert row dans reponses_enquetes). Mapper chaque champ. Tester et activer.',tags:['tool']},
+  {n:17,title:'Installer Python et créer l\'environnement de travail',desc:'python.org → Python 3.11+. Créer dossier "avenear-data". Terminal : python -m venv env → activer. pip install pandas numpy scipy supabase python-dotenv openpyxl. Créer le fichier .env avec clés Supabase.',tags:['python','tool']},
+  {n:18,title:'Installer Whisper en local sur ton ordinateur',desc:'Terminal : pip install openai-whisper. Tester avec un fichier audio court : whisper test.mp3 --language fr --output_format txt. L\'audio ne quitte jamais la machine. Zéro risque RGPD.',tags:['tool','rgpd','python']},
+  {n:19,title:'Configurer Notion EU (hébergement Europe)',desc:'Notion → Settings → Region → Europe. Créer la structure de dossiers : Missions / RGPD / Guides entretien / Clés API / Équipe / Base de connaissance.',tags:['tool','rgpd']},
+]},
+{id:'g2',cls:'g2',ncls:'n2',label:'Phase 1B — Collecte (à répéter pour chaque mission)',tasks:[
+  {n:20,title:'Faire signer le DPA à l\'école cliente',desc:'BLOQUANT : aucune collecte sans DPA signé. Envoyer le DPA type personnalisé. Archiver le PDF signé dans Notion EU → dossier mission. Mettre à jour le registre des traitements.',tags:['rgpd'],blocker:true},
+  {n:21,title:'Construire le formulaire Tally pour la mission',desc:'Page 1 : mention RGPD + case consentement. Page 2 : profil anonymisé. Page 3 : satisfaction globale (5 questions, 1-5). Page 4 : dimensions thématiques. Page 5 : verbatims libres (3 questions ouvertes).',tags:['tool','data']},
+  {n:22,title:'Tester le formulaire (5 personnes, mobile)',desc:'Vérifier : affichage mobile, temps complétion < 10 min, logique conditionnelle, mapping Supabase. Corriger avant déploiement réel.',tags:['tool']},
+  {n:23,title:'Déployer le questionnaire auprès des étudiants',desc:'Diffusion : email officiel école + relais BDE + QR codes campus. Relances à J+3, J+7, J+10 sur segments sous-représentés. Objectif : 25-50 réponses par promotion minimum.',tags:['data']},
+  {n:24,title:'Créer le guide d\'entretien dans Notion EU',desc:'Structure : intro + consentement (2 min) / parcours général (5 min) / thème 1 (10 min) / thème 2 (10 min) / frustrations + suggestions (8 min) / clôture (5 min). Questions ouvertes uniquement.',tags:['tool','data']},
+  {n:25,title:'Réaliser les entretiens (8 à 15 par mission)',desc:'Avant chaque entretien : lire mention à voix haute, enregistrer confirmation orale (30 premières secondes), envoyer email récapitulatif. Enregistrer en local, téléphone en mode avion.',tags:['rgpd','data']},
+  {n:26,title:'Transcrire chaque entretien avec Whisper local',desc:'Transférer audio sur ordi via câble. Commande : whisper audio.mp3 --language fr --output_format txt. Traiter dans les 48h après l\'entretien.',tags:['tool','python','rgpd']},
+]},
+{id:'g3',cls:'g3',ncls:'n3',label:'Phase 2 — Nettoyage des données (Python)',tasks:[
+  {n:27,title:'Script 1 — Récupérer les données depuis Supabase',desc:'Script Python : connexion Supabase → SELECT sur reponses_enquetes filtrée par mission_id → DataFrame pandas. Point de départ de tous les scripts de nettoyage.',tags:['python','data','tool']},
+  {n:28,title:'Script 2 — Supprimer les réponses trop rapides (< 3 min)',desc:'df[df["duree_secondes"] >= 180]. Seuil : 3 minutes minimum pour un questionnaire de 7 minutes. En dessous = réponse aléatoire sans lecture. Loguer le nombre supprimé.',tags:['python','data']},
+  {n:29,title:'Script 3 — Supprimer les doublons exacts',desc:'df.drop_duplicates(subset=colonnes_scores + ["statut","promotion"], keep="first"). Un doublon exact sur tous les scores est quasi-impossible : signe de copie. Loguer avant suppression.',tags:['python','data']},
+  {n:30,title:'Script 4 — Détecter le straight-lining (réponses monotones)',desc:'Pour chaque répondant : std de toutes ses réponses numériques. Si std < 0.3 sur plus de 10 questions → flag "qualite_douteuse". Exporter un rapport CSV pour revue manuelle.',tags:['python','data']},
+  {n:31,title:'Script 5 — Détecter les outliers par Z-score',desc:'scipy.stats.zscore sur chaque colonne numérique. Flag les valeurs avec |z| > 3. Ne pas supprimer automatiquement : créer une colonne "outlier_flag" et exporter pour revue.',tags:['python','data']},
+  {n:32,title:'Script 6 — Nettoyer les verbatims libres',desc:'strip(), correction majuscules, filtrer les non-pertinents (".", "rien", "ok", "n/a", chaines < 5 caractères). Conserver tout le reste même si court.',tags:['python','data']},
+  {n:33,title:'Script 7 — Générer le rapport qualité des données',desc:'Rapport : réponses initiales / supprimées (avec raison) / conservées / taux complétion par question / représentativité par segment. Export CSV + console.',tags:['python','data','out']},
+  {n:34,title:'Script 8 — Anonymiser les transcriptions (avant upload)',desc:'Regex sur prénoms (liste 500 prénoms FR), emails, téléphones, URLs. Remplacements : [ETUDIANT_A], [ENSEIGNANT_1], [ENTREPRISE]. PUIS revue manuelle obligatoire : zéro identifiant résiduel toléré.',tags:['python','rgpd','data']},
+  {n:35,title:'Script 9 — Uploader les transcriptions anonymisées dans Supabase',desc:'Après validation manuelle : Python → INSERT dans table entretiens. Logger la date d\'upload. Marquer le fichier audio comme "à supprimer sous 30 jours" dans le registre RGPD.',tags:['python','tool','rgpd']},
+  {n:36,title:'Supprimer les fichiers audio originaux + vider corbeille',desc:'Supprimer le .mp3 ET vider la corbeille. Délai max : 30 jours après l\'entretien. Logger la date de suppression dans le registre RGPD Notion.',tags:['rgpd']},
+]},
+{id:'g4',cls:'g4',ncls:'n4',label:'Phase 3 — Codage qualitatif (Mistral API EU)',tasks:[
+  {n:37,title:'Créer le codebook Avenear dans Notion EU',desc:'7 dimensions : (1) Carrières & insertion (2) Vie étudiante (3) Scolarité/admin (4) Pédagogie (5) Communication (6) Bien-être (7) International. Pour chaque dimension : 3-5 codes précis avec définition et exemples.',tags:['data']},
+  {n:38,title:'Définir les codes sentiment, intensité et type d\'insight',desc:'Sentiment : Positif/Neutre/Négatif/Mixte. Intensité : Fort/Modéré/Faible. Type : Friction / Attente / Pratique / Signal faible. Stocker dans Notion EU avec exemples concrets.',tags:['data']},
+  {n:39,title:'Créer le compte Mistral et obtenir la clé API',desc:'console.mistral.ai → créer compte → API keys → créer clé. Ajouter dans .env : MISTRAL_KEY. Signer le DPA Mistral. Serveurs Paris, DPA EU natif.',tags:['tool','rgpd']},
+  {n:40,title:'Script 10 — Coder les verbatims Tally via Mistral',desc:'Charger verbatims depuis Supabase → appel Mistral API avec prompt de codage → parser JSON {theme, sous_theme, sentiment, intensite, type_insight, verbatim_cle, confidence_score} → UPDATE Supabase.',tags:['python','ia','data','tool']},
+  {n:41,title:'Script 11 — Coder les transcriptions entretiens via Mistral',desc:'Charger transcriptions depuis Supabase → découper en extraits → coder chaque extrait via Mistral → agréger par entretien → UPDATE table entretiens.',tags:['python','ia','data','tool']},
+  {n:42,title:'Script 12 — Validation croisée (double codage 20%)',desc:'Sélectionner 20% des extraits aléatoirement. Faire coder manuellement par un student-researcher. Calculer taux d\'accord : seuil acceptable > 75%. En dessous → affiner le prompt et recoder.',tags:['python','data']},
+]},
+{id:'g5',cls:'g5',ncls:'n5',label:'Phase 4 — Analyse (Python + Claude API)',tasks:[
+  {n:43,title:'Script 13 — Scores moyens par dimension et segment',desc:'df.groupby("segment")[colonnes_dimension].mean(). Identifier écarts > 0.5 point entre segments. Ces écarts signalent des expériences différenciées significatives.',tags:['python','data']},
+  {n:44,title:'Script 14 — Matrice de satisfaction (base heatmap)',desc:'Tableau croisé dimensions × segments, score moyen dans chaque cellule. Seuils : rouge < 2.5 / orange 2.5-3.5 / vert > 3.5. Export CSV pour Looker Studio + Excel pour le rapport.',tags:['python','data','out']},
+  {n:45,title:'Script 15 — Analyse de dispersion (consensus vs polarisation)',desc:'df[col].std() pour chaque question. Std > 1.2 = opinions polarisées. Std < 0.7 = consensus. Un sujet clivant est souvent plus stratégique qu\'un score bas avec consensus.',tags:['python','data']},
+  {n:46,title:'Script 16 — Matrice de corrélations entre dimensions',desc:'df[colonnes_dimensions].corr(method="pearson"). Corrélation > 0.6 = lien causal probable. Ex : Corrélation forte Communication × Carrières → problème carrières = problème de com.',tags:['python','data','out']},
+  {n:47,title:'Script 17 — Calcul NPS étudiant par segment',desc:'Recoder question recommandation (1-5) en 0-10. NPS = % promoteurs (9-10) - % détracteurs (0-6). Calculer NPS global + par segment + par promotion.',tags:['python','data','out']},
+  {n:48,title:'Script 18 — Fréquence et score de criticité des thèmes quali',desc:'Score criticité = fréquence × intensité moyenne (Faible=1, Modéré=2, Fort=3). Classer par score décroissant. Top 3 = priorités absolues du rapport.',tags:['python','data']},
+  {n:49,title:'Script 19 — Extraction des verbatims clés par thème',desc:'Pour chaque thème prioritaire : extraits avec confidence_score > 0.8 ET intensite = "Fort". Choisir 2-3 verbatims représentatifs de segments différents.',tags:['python','data','out']},
+  {n:50,title:'Script 20 — Croisement quanti × quali par dimension',desc:'Pour chaque dimension : assembler score moyen + top 3 thèmes quali + verbatims clés + sentiment dominant. Input pour Claude API.',tags:['python','data','ia']},
+  {n:51,title:'Envoyer le profil complet à Claude API pour synthèse',desc:'Prompt : matrice scores + top 5 thèmes + corrélations + NPS + verbatims clés. Demander : 3 insights majeurs, causes racines probables, segments à risque, opportunités.',tags:['ia','out']},
+  {n:52,title:'Générer les hypothèses d\'action testables (Claude API)',desc:'Pour chaque problème : "Si [action], alors [résultat mesurable], vérifiable par [KPI]". Ce format force la pensée décisionnelle.',tags:['ia','out']},
+  {n:53,title:'Construire la matrice Impact × Effort (Claude API)',desc:'Estimation Impact (1-3) et Effort (1-3) pour chaque action. Classer : Quick Wins, Projets majeurs, Petites victoires, À éviter.',tags:['ia','out']},
+]},
+{id:'g6',cls:'g6',ncls:'n6',label:'Phase 5 & 6 — Visualisation et livrables clients',tasks:[
+  {n:54,title:'Connecter Supabase à Looker Studio (PostgreSQL)',desc:'Looker Studio → Ajouter source → PostgreSQL → paramètres Supabase. SSL obligatoire. Connecter sur les 3 vues SQL (pas sur les tables brutes).',tags:['tool','data']},
+  {n:55,title:'Construire la Page 1 — Vue exécutive (direction)',desc:'4 KPI : NPS, score global /5, taux participation, nb insights critiques. 1 heatmap dimensions. Top 3 irritants. Compris en 30 secondes.',tags:['tool','out']},
+  {n:56,title:'Construire la Page 2 — Analyse par dimension',desc:'Barres horizontales par segment, évolution temporelle, top verbatims associés. Filtre par dimension + segment + promotion.',tags:['tool','out']},
+  {n:57,title:'Construire la Page 3 — Cartographie qualitative',desc:'Graphique bulles : axe X = fréquence, axe Y = intensité négative, taille = segments touchés. Bulles haut droite = priorités absolues.',tags:['tool','out']},
+  {n:58,title:'Construire la Page 4 — Matrice Impact × Effort',desc:'Graphique 4 quadrants des actions recommandées. Tableau détaillé : action, owner suggéré, délai, KPI, hypothèse testable.',tags:['tool','out']},
+  {n:59,title:'Paramétrer filtres + partage client Looker Studio',desc:'Filtres : Mission, Établissement, Segment, Période. Lien partage lecture seule sans compte Google. Mise à jour automatique toutes les heures depuis Supabase.',tags:['tool','out']},
+  {n:60,title:'Générer le plan d\'action 30-60-90 jours (Claude API)',desc:'30j = Quick Wins (zéro budget). 60j = actions intermédiaires (process, outils). 90j = transformations structurelles. Chaque action : owner + KPI + délai.',tags:['ia','out']},
+  {n:61,title:'Rédiger les recommandations en langage décisionnel',desc:'Format : Observation → Cause probable → Action → Résultat attendu → Comment mesurer. Une recommandation = une décision à prendre.',tags:['out']},
+  {n:62,title:'Préparer le memo exécutif 2 pages',desc:'Contexte (1 para), 3 insights critiques (bullets chiffrés), 5 recommandations (tableau impact/effort), next step avec date. Généré par Claude API.',tags:['ia','out']},
+  {n:63,title:'Préparer la restitution (deck 10 slides)',desc:'Contexte → méthode → 3 insights → heatmap → priorités → plan 30-60-90 → next step. Dashboard présenté en live. Durée : 45 min + 15 min questions.',tags:['out']},
+  {n:64,title:'Partager le dashboard + guide de lecture client',desc:'Envoyer lien Looker Studio + guide 1 page. Préciser durée d\'accès : 12 mois. Tester l\'accès côté client avant la restitution.',tags:['tool','out']},
+  {n:65,title:'Archiver la mission + mettre à jour le registre RGPD',desc:'Notion EU : archiver tous les livrables. Mettre à jour le registre (date fin, date suppression prévue). Ajouter insights à la base de connaissance Avenear.',tags:['rgpd','tool']},
+]},
+];
+
+const STORAGE_KEY = 'avenear_todo_v1';
+let state = {};
+try { state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e) {}
+let gopen = {};
+groups.forEach(g => gopen[g.id] = true);
+
+function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {} }
+function countDone(g) { return g.tasks.filter((_,i) => state[g.id+'_'+i]).length; }
+function totalAll()   { return groups.reduce((s,g) => s+g.tasks.length, 0); }
+function doneAll()    { return groups.reduce((s,g) => s+countDone(g), 0); }
+
+function updateBar() {
+  const t=totalAll(), d=doneAll(), pct=t?Math.round(d/t*100):0;
+  document.getElementById('gfill').style.width = pct+'%';
+  document.getElementById('gpct').textContent = d+' / '+t+' tâches ('+pct+'%)';
+}
+
+function toggle(gid, i, val) {
+  state[gid+'_'+i] = val;
+  save();
+  const g = groups.find(x => x.id===gid);
+  const el = document.getElementById('ttl_'+gid+'_'+i);
+  const row = document.getElementById('row_'+gid+'_'+i);
+  if (el)  el.className = 'ttitle'+(val?' done':'');
+  if (row) row.className = 'trow'+(val?' done-row':'');
+  document.getElementById('gp_'+gid).textContent = countDone(g)+'/'+g.tasks.length;
+  updateBar();
+}
+
+function toggleGroup(gid) {
+  gopen[gid] = !gopen[gid];
+  document.getElementById('gb_'+gid).className = 'group-body'+(gopen[gid]?' open':'');
+  document.getElementById('gc_'+gid).className = 'group-chev'+(gopen[gid]?' open':'');
+}
+
+const tagMap = {tool:['t-tool','Outil'],rgpd:['t-rgpd','RGPD'],ia:['t-ia','IA'],data:['t-data','Données'],out:['t-out','Livrable'],python:['t-python','Python']};
+function tagHTML(tags) {
+  return (tags||[]).map(t => { const[c,l]=tagMap[t]||['t-tool',t]; return `<span class="tag ${c}">${l}</span>`; }).join('');
+}
+
+function render() {
+  const root = document.getElementById('root');
+  root.innerHTML = '';
+  groups.forEach(g => {
+    const done=countDone(g), total=g.tasks.length, open=gopen[g.id];
+    const div = document.createElement('div');
+    div.className = 'group '+g.cls;
+    let tasksHTML = '';
+    g.tasks.forEach((t,i) => {
+      const checked = state[g.id+'_'+i]||false;
+      const blocker = t.blocker ? `<span class="blocker">⚠ Bloquant</span>` : '';
+      tasksHTML += `<div class="trow${checked?' done-row':''}" id="row_${g.id}_${i}">
+        <div class="tnum ${g.ncls}">${t.n}</div>
+        <input class="tcb" type="checkbox" ${checked?'checked':''} onchange="toggle('${g.id}',${i},this.checked)">
+        <div class="tbody">
+          <div class="ttitle${checked?' done':''}" id="ttl_${g.id}_${i}">${t.title}</div>
+          <div class="tdesc">${t.desc}</div>
+          <div class="tmeta">${tagHTML(t.tags)}${blocker}</div>
+        </div>
+      </div>`;
+    });
+    div.innerHTML = `
+      <div class="group-header" onclick="toggleGroup('${g.id}')">
+        <div class="group-dot"></div>
+        <div class="group-name">${g.label}</div>
+        <div class="group-prog" id="gp_${g.id}">${done}/${total}</div>
+        <div class="group-chev${open?' open':''}" id="gc_${g.id}">&#9654;</div>
+      </div>
+      <div class="group-body${open?' open':''}" id="gb_${g.id}">${tasksHTML}</div>`;
+    root.appendChild(div);
+  });
+  updateBar();
+}
+render();
+</script>
+</body>
+</html>
